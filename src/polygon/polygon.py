@@ -1,12 +1,26 @@
+import os
+
 import numpy as np
 import cv2
+from polygon.curves import BSpline
 class Polygon:
     def __init__(self, points=None):
         self.points = points if points else []
+        self.curves = []
 
     def add_point(self, point):
         self.points.append(point)
 
+    def add_curves(self):
+        if len(self.points) != 4:
+            return None
+        self.curves = [
+            BSpline(self.points[0], self.points[1]),
+            BSpline(self.points[1], self.points[2]),
+            BSpline(self.points[2], self.points[3]),
+            BSpline(self.points[3], self.points[0])
+        ]
+        return self.curves
     def to_list(self):
         return self.points
 def create_polygon(points):

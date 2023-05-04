@@ -3,7 +3,7 @@ from PIL import ImageTk, Image
 from tkinter import Canvas
 # 在DetectionCanvas类中，我们定义了画布，能够绘制多边形、更新多边形、绘制检测结果和清除检测结果，以及在画布上显示图像。
 class DetectionCanvas(Canvas):
-    def __init__(self, master, width=800, height=600, **kwargs):
+    def __init__(self, master, width=1920, height=1080, **kwargs):
         super().__init__(master, width=width, height=height, **kwargs)
         self.pack()
 
@@ -32,12 +32,10 @@ class DetectionCanvas(Canvas):
         self.photo = ImageTk.PhotoImage(image)
         self.canvas.create_image(0, 0, image=self.photo, anchor='nw')
 
-    def draw_detections(self, detections, polygon):
-        self.delete("all")
-        for det in detections:
-            x1, y1, x2, y2, conf, cls = det
-            self.create_rectangle(x1, y1, x2, y2, outline="red")
-            self.create_text(x1, y1, text=f"{cls}: {conf:.2f}", anchor=tk.NW, fill="red")
+    def draw_detections(self, detection, polygon):
+        x1, y1, x2, y2, conf, cls = detection
+        self.create_rectangle(x1, y1, x2, y2, outline="red")
+        self.create_text(x1, y1, text=f"{cls}: {conf:.2f}", anchor=tk.NW, fill="red")
         self.draw_polygon(polygon)
 
     def draw_polygon(self, polygon):
@@ -46,3 +44,12 @@ class DetectionCanvas(Canvas):
                 self.create_line(polygon.points[i], polygon.points[i + 1], fill="blue")
             if len(polygon.points) == 4:
                 self.create_line(polygon.points[-1], polygon.points[0], fill="blue")
+
+    def draw_point(self, point, color="red", radius=3):
+        x, y = point
+        self.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color)
+
+    def draw_curve(self, curve, color="blue"):
+        points = curve.get_curve_points()
+        for i in range(len(points) - 1):
+            self.create_line(points[i][0], points[i][1],points[i+1][0],points[i+1][1], fill=color)

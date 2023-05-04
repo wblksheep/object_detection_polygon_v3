@@ -4,7 +4,7 @@ from gui.gui_main import TargetDetectionGUI
 def main():
     root = tk.Tk()
     root.title("Target Detection")
-    root.geometry("800x600")
+    root.geometry("1920x1080")
     root.resizable(False, False)
 
     app = TargetDetectionGUI(root)

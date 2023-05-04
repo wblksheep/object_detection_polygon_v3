@@ -1,13 +1,26 @@
 import os
+from treelib import Node, Tree
 
-def print_directory_structure(start_path="."):
-    start_path = os.path.abspath(start_path)  # 获取绝对路径
-    for root, dirs, files in os.walk(start_path):
-        level = root.replace(start_path, "").count(os.sep)
-        indent = " " * 4 * level
-        print(f"{indent}{os.path.basename(root)}{os.sep}")
-        sub_indent = " " * 4 * (level + 1)
-        for f in files:
-            print(f"{sub_indent}{f}")
+def generate_tree(path, parent, tree, ignored_directories=None):
+    if ignored_directories is None:
+        ignored_directories = []
 
-print_directory_structure()
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+        if os.path.isdir(item_path) and item in ignored_directories:
+            continue
+
+        node = tree.create_node(item, parent=parent)
+        if os.path.isdir(item_path):
+            generate_tree(item_path, node.identifier, tree, ignored_directories)
+
+def print_directory_tree(start_path, ignored_directories=None):
+    tree = Tree()
+    tree.create_node(start_path, "root")
+    generate_tree(start_path, "root", tree, ignored_directories)
+    tree.show()
+
+if __name__ == "__main__":
+    start_path = "."
+    ignored_directories = ['venv','.git']
+    print_directory_tree(start_path, ignored_directories)

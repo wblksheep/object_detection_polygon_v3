@@ -1,12 +1,17 @@
 import os
 import sys
 from PIL import Image, ImageTk
+
+import json
+import cv2
+import torch
+from pathlib import Path
+
+# Import YOLOv5
 from src.detection.yolo_v5 import YOLOv5
 from src.polygon.polygon import Polygon
-import json
 ## Add parent directory to sys.path
 # parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
-print(os.path.dirname(__file__))
 sys.path.append(os.path.dirname(__file__))
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -23,6 +28,7 @@ class TargetDetectionGUI(tk.Frame):
     def create_widgets(self):
         self.canvas = DetectionCanvas(self.master)
         self.canvas.grid(row=0, column=0, rowspan=4)
+        self.canvas.bind("<Button-1>", self.click_on_canvas)
 
         self.capture_button = ttk.Button(self.master, text="Capture", command=self.display_image_on_canvas)
         self.capture_button.grid(row=0, column=1)
@@ -39,6 +45,16 @@ class TargetDetectionGUI(tk.Frame):
         self.load_button = ttk.Button(self.master, text="Load Polygon", command=self.load_preset_polygon)
         self.load_button.grid(row=4, column=1)
 
+    def click_on_canvas(self, event):
+        point = (event.x, event.y)
+        self.polygon.add_point(point)
+        self.canvas.draw_point(point)
+
+        if len(self.polygon.points) == 4:
+            curves = self.polygon.add_curves()
+            for curve in curves:
+                self.canvas.draw_curve(curve)
+
     def display_image_on_canvas(self):
         # Capture image from the camera and display it on the canvas
         import cv2
@@ -53,9 +69,32 @@ class TargetDetectionGUI(tk.Frame):
 
     def update_detection_results(self):
         # Update detection results on the canvas
-        detections = self.yolo.detect_objects()
-        self.canvas.draw_detections(detections, self.polygon)
-        pass
+        import cv2
+        from src.config import load_config
+        _, RESOURCES_PATH = load_config()
+        # 构建图像文件的绝对路径
+        image_path = os.path.join(RESOURCES_PATH, "img.png")
+        frame = self.yolo.capture_image() if self.yolo.capture_image() is not None else cv2.imread(image_path)
+        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        img_pil = Image.fromarray(img)
+        # Resize image and convert to PyTorch tensor
+        img = self.yolo.img_transforms(img_pil)
+        # Add batch dimension
+        img = img.unsqueeze(0)
+        # Perform object detection
+        results = self.yolo.detect_objects(img)
+        detections = results[0]
+
+        # Show the image on the canvas
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        self.canvas_image = ImageTk.PhotoImage(Image.fromarray(frame))
+        self.canvas.create_image(0, 0, anchor=tk.NW, image=self.canvas_image)
+        # Draw detections on the canvas
+        for detection in detections:
+            self.canvas.draw_detections(detection, self.polygon)
+        # Redraw the polygon
+        self.canvas.draw_polygon(self.polygon)
+
 
     def save_detection_results(self):
         # Save current detection results and polygon settings
