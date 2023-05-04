@@ -1,6 +1,7 @@
 import tkinter as tk
 from PIL import ImageTk, Image
 from tkinter import Canvas
+from matplotlib.path import Path
 # 在DetectionCanvas类中，我们定义了画布，能够绘制多边形、更新多边形、绘制检测结果和清除检测结果，以及在画布上显示图像。
 class DetectionCanvas(Canvas):
     def __init__(self, master, width=1920, height=1080, **kwargs):
@@ -34,8 +35,13 @@ class DetectionCanvas(Canvas):
 
     def draw_detections(self, detection, polygon):
         x1, y1, x2, y2, conf, cls = detection
-        self.create_rectangle(x1, y1, x2, y2, outline="red")
-        self.create_text(x1, y1, text=f"{cls}: {conf:.2f}", anchor=tk.NW, fill="red")
+
+        # Check if the detection's center is inside the polygon
+        detection_center = (int((x1 + x2) / 2), int((y1 + y2) / 2))
+        if 0 <= detection_center[0] < 1920 and 0 <= detection_center[1] < 1080:
+            if polygon.is_point_inside(detection_center):
+                self.create_rectangle(int(x1), int(y1), int(x2), int(y2), outline="red")
+                self.create_text(int(x1), int(y1), text=f"{cls}: {conf:.2f}", anchor=tk.NW, fill="red")
         self.draw_polygon(polygon)
 
     def draw_polygon(self, polygon):

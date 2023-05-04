@@ -10,8 +10,6 @@ from pathlib import Path
 # Import YOLOv5
 from src.detection.yolo_v5 import YOLOv5
 from src.polygon.polygon import Polygon
-## Add parent directory to sys.path
-# parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__)))
 sys.path.append(os.path.dirname(__file__))
 import tkinter as tk
 from tkinter import ttk, filedialog
@@ -75,15 +73,8 @@ class TargetDetectionGUI(tk.Frame):
         # 构建图像文件的绝对路径
         image_path = os.path.join(RESOURCES_PATH, "img.png")
         frame = self.yolo.capture_image() if self.yolo.capture_image() is not None else cv2.imread(image_path)
-        img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        img_pil = Image.fromarray(img)
-        # Resize image and convert to PyTorch tensor
-        img = self.yolo.img_transforms(img_pil)
-        # Add batch dimension
-        img = img.unsqueeze(0)
-        # Perform object detection
-        results = self.yolo.detect_objects(img)
-        detections = results[0]
+        # Perform object detection using provided detect function
+        detections=self.yolo.detect(image_path)
 
         # Show the image on the canvas
         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
