@@ -15,11 +15,19 @@ class Polygon:
     def add_curves(self):
         if len(self.points) != 4:
             return None
+
+        def create_four_equidistant_points(p1, p2):
+            t_values = np.linspace(0, 1, 4)
+            #将p1和p2按[0]位置坐标升序排列
+            if p1[0] > p2[0]:
+                p1, p2 = p2, p1
+            return [(p1[0] + t * (p2[0] - p1[0]), p1[1] + t * (p2[1] - p1[1])) for t in t_values]
+
         self.curves = [
-            BSpline(self.points[0], self.points[1]),
-            BSpline(self.points[1], self.points[2]),
-            BSpline(self.points[2], self.points[3]),
-            BSpline(self.points[3], self.points[0])
+            BSpline(create_four_equidistant_points(self.points[0], self.points[1])),
+            BSpline(create_four_equidistant_points(self.points[1], self.points[2])),
+            BSpline(create_four_equidistant_points(self.points[2], self.points[3])),
+            BSpline(create_four_equidistant_points(self.points[3], self.points[0]))
         ]
         self.generate_mask()
         return self.curves
@@ -31,6 +39,11 @@ class Polygon:
 
     def is_point_inside(self, point):
         return self.mask[point[1], point[0]] == 255
+
+    def update_polygon(self, new_points):
+        for i, new_point in enumerate(new_points):
+            self.points[i] = new_point
+        self.add_curves()
 
     def to_list(self):
         return self.points

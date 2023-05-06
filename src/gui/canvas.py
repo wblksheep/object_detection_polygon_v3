@@ -8,8 +8,10 @@ class DetectionCanvas(Canvas):
         super().__init__(master, width=width, height=height, **kwargs)
         self.pack()
 
-    def draw_polygon(self, polygon_points, fill_color='blue', outline_color='red'):
-        self.polygon = self.canvas.create_polygon(polygon_points, fill=fill_color, outline=outline_color)
+    def draw_polygon(self, polygon):
+        if len(polygon.points) == 4:
+            for curve in polygon.curves:
+                self.draw_curve(curve)
 
     def update_polygon(self, polygon_points):
         self.canvas.coords(self.polygon, *polygon_points)
@@ -59,3 +61,14 @@ class DetectionCanvas(Canvas):
         points = curve.get_curve_points()
         for i in range(len(points) - 1):
             self.create_line(points[i][0], points[i][1],points[i+1][0],points[i+1][1], fill=color)
+
+    #补充draw_selected_curve方法，用于绘制选中的曲线
+    def draw_selected_curve(self, curve, color="red"):
+        points = curve.get_curve_points()
+        for i in range(len(points) - 1):
+            self.create_line(points[i][0], points[i][1],points[i+1][0],points[i+1][1], fill=color)
+
+    def update_curves(self, curves):
+        for curve in curves:
+            self.delete(curve)
+            self.draw_curve(curve)
