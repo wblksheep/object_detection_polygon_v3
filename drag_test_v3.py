@@ -46,35 +46,19 @@ class ResizablePolygon(PolygonSubject):
         super().__init__()
         self.canvas = canvas
         self.points = [(100, 100), (200, 300), (300, 100), (250, 200)]
+
+        tck, u = interpolate.splprep([[p[0] for p in self.points], [p[1] for p in self.points]], s=0, per=True)
+        u_new = np.linspace(u.min(), u.max(), len(self.points))
+        self.points = list(zip(*interpolate.splev(u_new, tck)))
+
         self.control_points = []
 
         for x, y in self.points:
-            point = self.canvas.create_oval(x-5, y-5, x+5, y+5, fill='white', outline='black')
+            point = self.canvas.create_oval(x - 5, y - 5, x + 5, y + 5, fill='white', outline='black')
             self.control_points.append(point)
-
-        self.canvas.bind("<Button-1>", self.on_button_press)
-        self.canvas.bind("<B1-Motion>", self.on_move_press)
-        self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
 
         self.dragging_point = None
         self.update_polygon()
-
-    def on_button_press(self, event):
-        for i, point in enumerate(self.control_points):
-            x1, y1, x2, y2 = self.canvas.coords(point)
-            if x1 <= event.x <= x2 and y1 <= event.y <= y2:
-                self.dragging_point = i
-                return
-
-    def on_move_press(self, event):
-        if self.dragging_point is not None:
-            x, y = event.x, event.y
-            self.canvas.coords(self.control_points[self.dragging_point], x-5, y-5, x+5, y+5)
-            self.points[self.dragging_point] = (x, y)
-            self.update_polygon()
-
-    def on_button_release(self, event):
-        self.dragging_point = None
 
     def update_polygon(self):
         self.notify_observers(self.points)
@@ -85,14 +69,34 @@ class ExampleApp(tk.Tk):
         super().__init__()
         self.geometry("1000x1000")
 
-        canvas = tk.Canvas(self, width=400, height=400)
-        canvas.pack()
+        self.polygon_canvas = PolygonCanvas(self, width=400, height=400)
+        self.polygon_canvas.pack()
 
-        polygon_canvas = PolygonCanvas(self, width=300, height=300)
-        polygon_canvas.pack()
+        self.resizable_polygon = ResizablePolygon(self.polygon_canvas)
+        self.resizable_polygon.register_observer(self.polygon_canvas)
 
-        self.resizable_polygon = ResizablePolygon(canvas)
-        self.resizable_polygon.register_observer(polygon_canvas)
+        self.polygon_canvas.bind("<Button-1>", self.on_button_press)
+        self.polygon_canvas.bind("<B1-Motion>", self.on_move_press)
+        self.polygon_canvas.bind("<ButtonRelease-1>", self.on_button_release)
+
+    def on_button_press(self, event):
+        for i, point in enumerate(self.resizable_polygon.control_points):
+            x1, y1, x2, y2 = self.resizable_polygon.canvas.coords(point)
+            if x1 <= event.x <= x2 and y1 <= event.y <= y2:
+                self.resizable_polygon.dragging_point = i
+                return
+
+    def on_move_press(self, event):
+        if self.resizable_polygon.dragging_point is not None:
+            x, y = event.x, event.y
+            self.resizable_polygon.canvas.coords(
+                self.resizable_polygon.control_points[self.resizable_polygon.dragging_point],
+                x - 5, y - 5, x + 5, y + 5)
+            self.resizable_polygon.points[self.resizable_polygon.dragging_point] = (x, y)
+            self.resizable_polygon.update_polygon()
+
+    def on_button_release(self, event):
+        self.resizable_polygon.dragging_point = None
 
 
 if __name__ == '__main__':

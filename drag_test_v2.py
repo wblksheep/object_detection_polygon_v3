@@ -33,7 +33,7 @@ class PolygonCanvas(tk.Canvas, PolygonObserver):
         x = [p[0] for p in points]
         y = [p[1] for p in points]
 
-        tck, u = interpolate.splprep([x, y], s=0, per=True)
+        tck, u = interpolate.splprep([x, y], s=10, per=True)
         u_new = np.linspace(u.min(), u.max(), 1000)
         x_new, y_new = interpolate.splev(u_new, tck)
 
@@ -45,7 +45,12 @@ class ResizablePolygon(PolygonSubject):
     def __init__(self, canvas):
         super().__init__()
         self.canvas = canvas
-        self.points = [(100, 100), (200, 300), (300, 100), (250, 200)]
+        self.points = [(100, 100), (100, 200), (200, 200), (200, 100), (50, 250)]
+
+        tck, u = interpolate.splprep([[p[0] for p in self.points], [p[1] for p in self.points]], s=10, per=True)
+        u_new = np.linspace(u.min(), u.max(), len(self.points))
+        self.points = list(zip(*interpolate.splev(u_new, tck)))
+
         self.control_points = []
 
         for x, y in self.points:
@@ -84,7 +89,6 @@ class ExampleApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.geometry("1000x1000")
-
         canvas = tk.Canvas(self, width=400, height=400)
         canvas.pack()
 
@@ -93,7 +97,6 @@ class ExampleApp(tk.Tk):
 
         self.resizable_polygon = ResizablePolygon(canvas)
         self.resizable_polygon.register_observer(polygon_canvas)
-
 
 if __name__ == '__main__':
     app = ExampleApp()

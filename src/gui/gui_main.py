@@ -86,29 +86,6 @@ class TargetDetectionGUI(tk.Frame):
             self.polygon.curves[self.selected_curve].points[self.dragging_point] = (x, y)
             self.polygon.curves[self.selected_curve].update_curve()
             self.polygon.curves[self.selected_curve].notify_observers()
-        # if self.curve_selected:
-        #     # 任务2: 根据拖拽行为选择最近的点，根据拖拽后的点生成新的曲线区域
-        #     dragged_point = (event.x, event.y)
-        #     min_distance = float("inf")
-        #     nearest_point = None
-        #
-        #     # 寻找曲线上距离拖拽点最近的点
-        #     for point in self.selected_curve.get_curve_points():
-        #         distance = math.sqrt((dragged_point[0] - point[0]) ** 2 + (dragged_point[1] - point[1]) ** 2)
-        #         if distance < min_distance:
-        #             min_distance = distance
-        #             nearest_point = point
-        #
-        #     # 计算拖拽事件的位移
-        #     dx = dragged_point[0] - nearest_point[0]
-        #     dy = dragged_point[1] - nearest_point[1]
-        #
-        #     # 更新 nearest_point 坐标
-        #     nearest_point = (nearest_point[0] + dx, nearest_point[1] + dy)
-        #
-        #     # 根据拖拽后的点生成新的曲线区域
-        #     self.selected_curve.create_adjusted_curve(nearest_point)
-        #     self.canvas.update_curve(self.selected_curve)
 
     def on_button_release(self, event):
         self.selected_curve = None
