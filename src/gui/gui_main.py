@@ -15,7 +15,7 @@ sys.path.append(os.path.dirname(__file__))
 import tkinter as tk
 from tkinter import ttk, filedialog
 from canvas import DetectionCanvas
-from src.polygon.canvasobserver import CanvasObserver
+from src.polygon.PolygonController import PolygonController
 
 
 class TargetDetectionGUI(tk.Frame):
@@ -23,22 +23,21 @@ class TargetDetectionGUI(tk.Frame):
         super().__init__(master)
         self.master = master
         self.yolo = YOLOv5()  # Initialize YOLOv5 object
-        self.polygon = Polygon()  # Initialize Polygon object
         self.curve_selected = False  # Add a boolean attribute to represent if a curve is selected
         self.selected_curve = None
         self.create_widgets()
-        self.canvas_observer = {}
+        self.polygon_init = False
+        self.polygon_controller = None
 
     def create_widgets(self):
         self.canvas = DetectionCanvas(self.master)
         self.canvas.grid(row=0, column=0, rowspan=4)
         self.canvas.bind("<Button-1>", self.click_on_canvas)
-        self.canvas.bind("<B1-Motion>", lambda event: self.on_canvas_move(self.canvas, event))  # Bind mouse move event
+        self.canvas.bind("<B1-Motion>", self.on_move_press)  # Bind mouse move event
         self.canvas.bind("<ButtonRelease-1>", self.on_button_release)
-
         self.capture_button = ttk.Button(self.master, text="Capture", command=self.display_image_on_canvas)
         self.capture_button.grid(row=0, column=1)
-
+        self.polygon = Polygon(self.canvas)  # Initialize Polygon object
         self.create_sliders()
 
         self.mode_combobox = ttk.Combobox(self.master, values=["High Performance", "Balanced", "Energy Saving"])
@@ -60,38 +59,29 @@ class TargetDetectionGUI(tk.Frame):
         self.canvas.update_curves(self.polygon.curves)
 
     def click_on_canvas(self, event):
-        if not self.curve_selected:
-            # Handle click event to form polygon area
+        if not self.polygon_init:
             point = (event.x, event.y)
             self.polygon.add_point(point)
-            self.canvas.draw_point(point)
-            if len(self.polygon.points) == 4:
-                curves = self.polygon.add_curves()
-                for i in range(len(self.polygon.curves)):
-                    self.canvas_observer[i] = CanvasObserver(self.canvas,
-                                                             self.polygon.curves[i])  # Initialize CanvasObserver object
-                self.curve_selected = True
+            point_id = self.canvas.draw_point(point)
+            self.polygon.add_control_point(point_id)
+            if len(self.polygon.points) == 5:
+                self.polygon.register_observer(self.canvas)  # Register canvas as observer of polygon
+                self.polygon_controller = PolygonController(self.polygon,
+                                                            self.canvas)  # Initialize PolygonController object                   self.polygon.curves[i])  # Initialize CanvasObserver object
+                self.polygon_init = True
+                self.polygon_controller.on_button_press(event.x, event.y)
         else:
-            for idx in range(len(self.canvas_observer)):
-                for i, point in enumerate(self.canvas_observer[idx].control_points):
-                    x1, y1, x2, y2 = self.canvas.coords(point)
-                    if x1 <= event.x <= x2 and y1 <= event.y <= y2:
-                        self.selected_curve = idx
-                        self.dragging_point = i
-                        return
+            self.polygon_controller.on_button_press(event.x, event.y)
 
-    def on_canvas_move(self, canvas, event):
-        if hasattr(self, 'dragging_point') and hasattr(self, 'selected_curve'):
-            x, y = event.x, event.y
-            self.polygon.curves[self.selected_curve].points[self.dragging_point] = (x, y)
-            self.polygon.curves[self.selected_curve].update_curve()
-            self.polygon.curves[self.selected_curve].notify_observers()
+    def on_move_press(self, event):
+        self.polygon_controller.on_move_press(event.x, event.y)
 
     def on_button_release(self, event):
-        self.selected_curve = None
-        self.dragging_point = None
+        if hasattr(self, 'polygon_controller'):
+            self.polygon_controller.on_button_release()
 
     def display_image_on_canvas(self):
+        self.canvas.clear_detections()
         # Capture image from the camera and display it on the canvas
         import cv2
         from src.config import load_config
@@ -104,6 +94,7 @@ class TargetDetectionGUI(tk.Frame):
         self.update_detection_results()
 
     def update_detection_results(self):
+
         # Update detection results on the canvas
         import cv2
         from src.config import load_config
@@ -121,8 +112,9 @@ class TargetDetectionGUI(tk.Frame):
         # Draw detections on the canvas
         for detection in detections:
             self.canvas.draw_detections(detection, self.polygon)
-        # Redraw the polygon
-        self.canvas.draw_polygon(self.polygon)
+        self.canvas.update_pre_detections()
+
+        self.polygon.update_polygon()
 
     def save_detection_results(self):
         # Save current detection results and polygon settings
