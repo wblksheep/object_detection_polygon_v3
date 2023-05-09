@@ -4,6 +4,7 @@ from tkinter import Canvas
 from matplotlib.path import Path
 from scipy import interpolate
 import numpy as np
+import cv2
 
 
 # 在DetectionCanvas类中，我们定义了画布，能够绘制多边形、更新多边形、绘制检测结果和清除检测结果，以及在画布上显示图像。
@@ -25,40 +26,14 @@ class DetectionCanvas(Canvas):
     def update_polygon(self, polygon):
         if self.curve:
             self.delete(self.curve)
-        polygon_points = polygon.points
-        control_points = polygon.control_points
-        x = [p[0] for p in polygon_points]
-        y = [p[1] for p in polygon_points]
-
-        tck, u = interpolate.splprep([x, y], per=True)
-        u_new = np.linspace(u.min(), u.max(), 1000)
-        x_new, y_new = interpolate.splev(u_new, tck)
-        for i, point in enumerate(polygon.control_points):
-            x1, y1, x2, y2 = self.coords(point)
-            self.delete(point)
-            point = self.create_oval(x1, y1, x2, y2, fill='white', outline='black')
-            polygon.control_points[i] = point
-        coords = [coord for point in zip(x_new, y_new) for coord in point]
-        self.curve = self.create_polygon(*coords, outline='blue', fill='', width=2)
-
-    # def draw_detection_results(self, detection_boxes, detection_classes, detection_colors):
-    #     self.detection_rectangles = []
-    #     for box, class_name, color in zip(detection_boxes, detection_classes, detection_colors):
-    #         x1, y1, x2, y2 = box
-    #         rectangle = self.canvas.create_rectangle(x1, y1, x2, y2, outline=color)
-    #         self.detection_rectangles.append(rectangle)
-    #         self.canvas.create_text(x1, y1, text=class_name, anchor='nw', fill=color)
-    #
-    # def clear_detection_results(self):
-    #     for rect in self.detection_rectangles:
-    #         self.delete(rect)
-    #     self.detection_rectangles = []
+        self.curve = self.create_polygon(*polygon.points, outline='blue', fill='', width=2)
 
     def clear_detections(self):
         for rect in self.pre_detection_rectangles:
             self.delete(rect)
         for text in self.pre_detection_text:
             self.delete(text)
+
     def update_pre_detections(self):
         self.pre_detection_rectangles=self.cur_detection_rectangles
         self.pre_detection_text=self.cur_detection_text
@@ -71,7 +46,7 @@ class DetectionCanvas(Canvas):
         self.photo = ImageTk.PhotoImage(image)
         self.create_image(0, 0, image=self.photo, anchor='nw')
 
-    def draw_detections(self, detection, polygon):
+    def draw_detections(self, detection, polygon, mapped_canvas):
         x1, y1, x2, y2, conf, cls = detection
 
         # Check if the detection's center is inside the polygon
@@ -83,6 +58,14 @@ class DetectionCanvas(Canvas):
                 self.cur_detection_rectangles.append(rectangle)
                 text = self.create_text(int(x1), int(y1), text=f"{cls}: {conf:.2f}", anchor=tk.NW, fill="red")
                 self.cur_detection_text.append(text)
+                x, y = detection_center[0], detection_center[1]
+                point = np.array([[x, y]], dtype=np.float32)
+                mapped_point = cv2.perspectiveTransform(point[None, :, :], polygon.homography_matrix)
+                mapped_x, mapped_y = int(mapped_point[0, 0, 0]), int(mapped_point[0, 0, 1])
+
+                # Create an oval with the mapped detection_center on the mapped_canvas
+                mapped_canvas.create_oval(mapped_x - 2, mapped_y - 2, mapped_x + 2, mapped_y + 2, fill='red',
+                                          outline='red')
 
 
     def draw_polygon(self, polygon):

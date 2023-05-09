@@ -3,6 +3,7 @@ import cv2
 from scipy import interpolate
 import matplotlib.pyplot as plt
 
+
 class PolygonObserver:
     def update(self, points):
         pass
@@ -28,6 +29,7 @@ class Polygon(PolygonSubject):
         self.curves = []
         self.img_shape = img_shape
         self.mask = np.zeros(img_shape, dtype=np.uint8)
+        self.homography_matrix = np.zeros((3, 3), dtype=np.uint8)
         self.control_points = []
 
         for x, y in self.points:
@@ -45,15 +47,8 @@ class Polygon(PolygonSubject):
 
     def generate_mask(self):
         self.mask = np.zeros(self.img_shape, dtype=np.uint8)
-        x = [p[0] for p in self.points]
-        y = [p[1] for p in self.points]
-
-        tck, u = interpolate.splprep([x, y], s=0, per=True)
-        u_new = np.linspace(u.min(), u.max(), 1000)
-        x_new, y_new = interpolate.splev(u_new, tck)
-        points = np.vstack([point for point in zip(x_new, y_new)])
-        hull = cv2.convexHull(points.astype(np.float32))
-        cv2.fillConvexPoly(self.mask, hull.astype(np.int32), 255)
+        pts = np.asarray(self.points, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.fillPoly(self.mask, [pts], 255)
 
     def is_point_inside(self, point):
         return self.mask[point[1], point[0]] == 255
@@ -71,10 +66,18 @@ class Polygon(PolygonSubject):
                 return i
         return None
 
+    def generate_homography_matrix(self):
+        quad_vertices = np.array(self.points, dtype=np.float32)
+        rect_width, rect_height = 300, 200
+        rect_vertices = np.array([[0, 0], [rect_width, 0], [rect_width, rect_height], [0, rect_height]],
+                                 dtype=np.float32)
+        self.homography_matrix, _ = cv2.findHomography(quad_vertices, rect_vertices)
+
     def update_control_point(self, index, x, y):
         self.canvas.coords(self.control_points[index], x - 5, y - 5, x + 5, y + 5)
         self.points[index] = (x, y)
         self.generate_mask()
+        self.generate_homography_matrix()
         # # 使用matplotlib将NumPy数组显示为灰度图像
         # plt.imshow(self.mask, cmap='gray')
         # # 保存图像
